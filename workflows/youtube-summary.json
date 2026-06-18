@@ -1,0 +1,775 @@
+{
+  "name": "YouTube Summary",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1856,
+        560
+      ],
+      "id": "081744cf-f872-41ae-9395-6ce39e8587a8",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        16,
+        336
+      ],
+      "id": "7312ef01-10a6-4429-a1d7-6f14d72c567f",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "SslJRlXekt1eVHzr",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Set Transcript Variable').item.json.transcriptText }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an expert content analyst and summarizer. Your job is to analyze YouTube video transcripts and produce clear, well-structured summaries formatted in clean Markdown.  When given a transcript, you will: 1. Write a concise general overview (3-5 sentences) that captures the core topic, main argument, and purpose of the video. 2. Extract all key takeaways, topics, tips, or insights discussed as bullet points. Each bullet should be a complete, standalone thought — not just a word or phrase.  Rules: - Do not fabricate or infer things not present in the transcript. - Do not include timestamps or filler content. - Keep bullets concise but informative (1-2 sentences each max). - Group related bullets under a sub-heading if there are more than 10 bullets. - Format your entire response in clean Markdown using the following structure:  ## 📋 General Overview  [Your overview paragraph here]  ## 🔑 Key Takeaways  - Bullet point 1 - Bullet point 2 ..."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -64,
+        112
+      ],
+      "id": "0b71ad12-d50e-4d33-8d95-413c43823c29",
+      "name": "Create Video Summary"
+    },
+    {
+      "parameters": {
+        "tableId": "YouTube-Summary",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "videoId",
+              "fieldValue": "={{ $('Video Info').item.json.snippet.resourceId.videoId }}"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $('Video Info').item.json.snippet.title }}"
+            },
+            {
+              "fieldId": "thumbnail",
+              "fieldValue": "={{ $json.videoThumbnail }}"
+            },
+            {
+              "fieldId": "videoChannelId",
+              "fieldValue": "={{ $('Video Info').item.json.snippet.videoOwnerChannelId }}"
+            },
+            {
+              "fieldId": "videoChannelTitle",
+              "fieldValue": "={{ $('Video Info').item.json.snippet.videoOwnerChannelTitle }}"
+            },
+            {
+              "fieldId": "summary",
+              "fieldValue": "={{ $json.videoSummary }}"
+            },
+            {
+              "fieldId": "videoPublished",
+              "fieldValue": "={{ $('Video Info').item.json.snippet.publishedAt }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        512,
+        240
+      ],
+      "id": "13348db6-4468-4ac6-a3a0-3805c3db28e3",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "s4OyOJgYSdKhVv5f",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "playlistItem",
+        "operation": "delete",
+        "playlistItemId": "={{ $('Video Info').item.json.id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        256
+      ],
+      "id": "48febe09-26a2-400d-81e5-b3a69e555407",
+      "name": "Remove Duplicate Video",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "EjHJIKJlgrwxu2ww",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "playlistItem",
+        "operation": "delete",
+        "playlistItemId": "={{ $('Video Info').item.json.id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        736,
+        320
+      ],
+      "id": "81452e7c-ac32-44eb-9589-2bdca423a05c",
+      "name": "Delete a playlist item",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "EjHJIKJlgrwxu2ww",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "playlistItem",
+        "playlistId": "PL4e6MlD4aYt9xFS56ZvQrpVMt5tqlL_2S",
+        "videoId": "={{ $('Video Info').item.json.snippet.resourceId.videoId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -192
+      ],
+      "id": "9019d4c0-cd69-4918-984f-0685ffb8947b",
+      "name": "Add to Review Playlist",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "EjHJIKJlgrwxu2ww",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "playlistItem",
+        "operation": "delete",
+        "playlistItemId": "={{ $('Video Info').item.json.id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        288,
+        -48
+      ],
+      "id": "b34ba9a6-a908-4600-801b-2cfc90697b6f",
+      "name": "Moved to Summary Review",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "EjHJIKJlgrwxu2ww",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "playlist",
+        "operation": "get",
+        "playlistId": "PL4e6MlD4aYt_k-Ie9tqDyhLAPH7cAR--s",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        -2304,
+        464
+      ],
+      "id": "6c5fe929-97e6-408b-bef0-cce4a3d890fd",
+      "name": "Get the Playlist Info",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "EjHJIKJlgrwxu2ww",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "playlistItem",
+        "operation": "getAll",
+        "playlistId": "PL4e6MlD4aYt_k-Ie9tqDyhLAPH7cAR--s",
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        -1856,
+        368
+      ],
+      "id": "a0efeec4-9c18-45f3-b277-5a1977f989a9",
+      "name": "Video Info",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "EjHJIKJlgrwxu2ww",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "45bbd5d2-168c-4b5a-9d6f-38a71ff79d04",
+              "leftValue": "={{ $json.contentDetails.itemCount }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2080,
+        464
+      ],
+      "id": "4844ecd0-42e6-4d10-8165-e5986f455687",
+      "name": "Videos in Playlist?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "14d1272d-4ebd-4e2b-b834-37243f4f132f",
+              "leftValue": "={{ $json.created_at }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1184,
+        32
+      ],
+      "id": "acedc1d5-9e91-4688-9eb6-7fc77cc5e730",
+      "name": "Video Not in DB"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "YouTube-Summary",
+        "limit": 1,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "videoId",
+              "condition": "eq",
+              "keyValue": "={{ $json.contentDetails.videoId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1408,
+        32
+      ],
+      "id": "a5e58b49-acd4-4b30-b6a2-b472c8380f84",
+      "name": "Check DB for Duplicate",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "s4OyOJgYSdKhVv5f",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "actorSource": "store",
+        "actorId": {
+          "__rl": true,
+          "value": "Uwpce1RSXlrzF6WBA",
+          "mode": "list",
+          "cachedResultName": "YouTube Video Transcript (starvibe/youtube-video-transcript)",
+          "cachedResultUrl": "https://console.apify.com/actors/Uwpce1RSXlrzF6WBA/input"
+        },
+        "customBody": "={\n    \"youtube_url\": \"https://www.youtube.com/watch?v={{ $('Video Info').item.json.contentDetails.videoId }}\",\n    \"max_videos\": 1,\n    \"include_transcript_text\": true\n}"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        -48
+      ],
+      "id": "571c15bb-dc58-4219-bfd6-c5e90063a14a",
+      "name": "Check for Transcript",
+      "alwaysOutputData": false,
+      "credentials": {
+        "apifyApi": {
+          "id": "HfauBUXLu4StMHPg",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "Datasets",
+        "datasetId": "={{ $json.storageIds.datasets.default }}",
+        "offset": {},
+        "limit": {},
+        "options": {}
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        -736,
+        -48
+      ],
+      "id": "ebc16bb3-3f0c-4c86-a56f-7f489d09e32f",
+      "name": "Pull the Transcript",
+      "credentials": {
+        "apifyApi": {
+          "id": "HfauBUXLu4StMHPg",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c4c07896-d038-4933-9a20-e33fca6f9a0f",
+              "name": "transcriptText",
+              "value": "={{ $json.transcript_text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -512,
+        -48
+      ],
+      "id": "eb54f3cf-5418-4a74-b5de-0af6fa40538b",
+      "name": "Set Transcript Variable"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f8f42c00-e39e-4604-9d9f-da8e90dd5169",
+              "leftValue": "={{ $json.transcriptText }}",
+              "rightValue": "VIDEO_ID_NOT_FOUND",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -288,
+        -48
+      ],
+      "id": "c5239e00-9e3b-48d8-874c-32e874f80159",
+      "name": "Transcript Failed"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ee530ba6-f167-4e01-9ad1-fc89c992c2d2",
+              "name": "videoThumbnail",
+              "value": "={{ $('Video Info').item.json.snippet.thumbnails.maxres?.url || $('Video Info').item.json.snippet.thumbnails.standard?.url }}",
+              "type": "string"
+            },
+            {
+              "id": "3eae1c95-fa91-419c-af92-43fdee565cff",
+              "name": "videoSummary",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        288,
+        240
+      ],
+      "id": "273e3065-c3ad-4541-a726-cc49e11a32db",
+      "name": "Set Extra Variables"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1632,
+        368
+      ],
+      "id": "4864652b-18fe-4181-a7a4-60955e8ec404",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1408,
+        -160
+      ],
+      "id": "e3f26e09-8356-40bc-b0cb-81f3228fb027",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2528,
+        464
+      ],
+      "id": "30b0c05d-c969-4264-9191-e94ea0efa955",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Create Video Summary",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Video Summary": {
+      "main": [
+        [
+          {
+            "node": "Set Extra Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicate Video": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Delete a playlist item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Review Playlist": {
+      "main": [
+        [
+          {
+            "node": "Moved to Summary Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Moved to Summary Review": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete a playlist item": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get the Playlist Info": {
+      "main": [
+        [
+          {
+            "node": "Videos in Playlist?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Info": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Videos in Playlist?": {
+      "main": [
+        [
+          {
+            "node": "Video Info",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Not in DB": {
+      "main": [
+        [
+          {
+            "node": "Check for Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Remove Duplicate Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check DB for Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Video Not in DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Transcript": {
+      "main": [
+        [
+          {
+            "node": "Pull the Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pull the Transcript": {
+      "main": [
+        [
+          {
+            "node": "Set Transcript Variable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Transcript Variable": {
+      "main": [
+        [
+          {
+            "node": "Transcript Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcript Failed": {
+      "main": [
+        [
+          {
+            "node": "Add to Review Playlist",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Video Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Extra Variables": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check DB for Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get the Playlist Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "deb4e551-5a65-4bf8-aa96-d7557fdf7b03",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "39e0aa766fed40825bd3883adf5c5e6fc1a5d649ac17cf8ead0fa7119df9a571"
+  },
+  "nodeGroups": [],
+  "id": "0ZCCywDZ6NuHQB9p",
+  "tags": []
+}

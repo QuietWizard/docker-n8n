@@ -1,0 +1,114 @@
+version: "3.8"
+
+# ============================================================
+#  N8N Self-Hosted — Docker Compose with Full Persistence
+# ============================================================
+#  All data (workflows, credentials, execution history)
+#  is stored in named Docker volumes and a local bind-mount,
+#  so nothing is lost when you restart or recreate containers.
+#
+#  Quick start:
+#    1. Copy .env.example → .env and fill in your values
+#    2. docker compose up -d
+#    3. Open http://localhost:5678
+#
+#  Update:
+#    docker compose pull && docker compose up -d
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  #  PostgreSQL — production-grade persistent database
+  # ----------------------------------------------------------
+  n8n-postgres:
+    image: postgres:16-alpine
+    container_name: n8n-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-n8n}
+      POSTGRES_USER:     ${POSTGRES_USER:-n8n}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-n8n} -d ${POSTGRES_DB:-n8n}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - n8n-internal
+
+  # ----------------------------------------------------------
+  #  N8N — workflow automation engine
+  # ----------------------------------------------------------
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      # ── Timezone ──────────────────────────────────────────
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-America/New_York}
+      TZ:               ${GENERIC_TIMEZONE:-America/New_York}
+
+      # ── Database (PostgreSQL) ──────────────────────────────
+      DB_TYPE:                    postgresdb
+      DB_POSTGRESDB_HOST:         n8n-postgres
+      DB_POSTGRESDB_PORT:         5432
+      DB_POSTGRESDB_DATABASE:     ${POSTGRES_DB:-n8n}
+      DB_POSTGRESDB_USER:         ${POSTGRES_USER:-n8n}
+      DB_POSTGRESDB_PASSWORD:     ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+
+      # ── Security ───────────────────────────────────────────
+      # IMPORTANT: Generate once and never change — losing this
+      # key makes all stored credentials unreadable.
+      N8N_ENCRYPTION_KEY:         ${N8N_ENCRYPTION_KEY:?N8N_ENCRYPTION_KEY is required}
+
+      # ── Runtime ────────────────────────────────────────────
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_RUNNERS_ENABLED:        "true"
+      NODE_ENV:                   production
+
+      # ── Execution history pruning ──────────────────────────
+      # Keep execution logs for 7 days (168 h) to save disk space.
+      # Set to "false" to keep everything forever.
+      EXECUTIONS_DATA_PRUNE:    ${EXECUTIONS_DATA_PRUNE:-true}
+      EXECUTIONS_DATA_MAX_AGE:  ${EXECUTIONS_DATA_MAX_AGE:-168}
+
+      # ── Optional: public webhook URL ───────────────────────
+      # Uncomment and set if n8n is exposed behind a reverse proxy.
+      # WEBHOOK_URL: https://n8n.yourdomain.com/
+
+    volumes:
+      # Persists the SQLite fallback DB, encryption key, instance
+      # logs, and source-control assets across restarts.
+      - n8n_data:/home/node/.n8n
+
+      # Shared folder for Read/Write-File nodes.
+      # In your workflows use the path /files/your-file.csv
+      - ./local-files:/files
+
+    depends_on:
+      n8n-postgres:
+        condition: service_healthy
+    networks:
+      - n8n-internal
+
+# ============================================================
+#  Named volumes — data lives here even after "docker compose down"
+#  Use "docker compose down -v" ONLY if you want to WIPE everything.
+# ============================================================
+volumes:
+  n8n_data:
+    driver: local
+  postgres_data:
+    driver: local
+
+# ============================================================
+#  Internal network — containers talk to each other by name
+# ============================================================
+networks:
+  n8n-internal:
+    driver: bridge
