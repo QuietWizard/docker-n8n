@@ -65,6 +65,7 @@ services:
       # IMPORTANT: Generate once and never change — losing this
       # key makes all stored credentials unreadable.
       N8N_ENCRYPTION_KEY:         ${N8N_ENCRYPTION_KEY:?N8N_ENCRYPTION_KEY is required}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
 
       # ── Runtime ────────────────────────────────────────────
       N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
@@ -81,6 +82,55 @@ services:
       # Uncomment and set if n8n is exposed behind a reverse proxy.
       # WEBHOOK_URL: https://n8n.yourdomain.com/
 
+      # ── Resell Ledger workflow (n8n/resell-ledger-ai-workflow.json) ──
+      # BYOA AI provider — all three kept live; AI_PROVIDER picks which one
+      # the workflow's AI nodes actually read (see RESELL_AI_PROVIDER in .env).
+      AI_PROVIDER: ${RESELL_AI_PROVIDER:?RESELL_AI_PROVIDER is required (ANTHROPIC | ABACUS | OPENROUTER | GOOGLE)}
+
+      AI_API_BASE_URL_ANTHROPIC:    ${RESELL_AI_API_BASE_URL_ANTHROPIC:-}
+      AI_API_KEY_ANTHROPIC:         ${RESELL_AI_API_KEY_ANTHROPIC:-}
+      AI_MODEL_VISION_ANTHROPIC:    ${RESELL_AI_MODEL_VISION_ANTHROPIC:-}
+      AI_MODEL_RESEARCH_ANTHROPIC:  ${RESELL_AI_MODEL_RESEARCH_ANTHROPIC:-}
+      AI_MODEL_VALUATION_ANTHROPIC: ${RESELL_AI_MODEL_VALUATION_ANTHROPIC:-}
+      AI_MODEL_WRITER_ANTHROPIC:    ${RESELL_AI_MODEL_WRITER_ANTHROPIC:-}
+
+      AI_API_BASE_URL_ABACUS:    ${RESELL_AI_API_BASE_URL_ABACUS:-}
+      AI_API_KEY_ABACUS:         ${RESELL_AI_API_KEY_ABACUS:-}
+      AI_MODEL_VISION_ABACUS:    ${RESELL_AI_MODEL_VISION_ABACUS:-}
+      AI_MODEL_RESEARCH_ABACUS:  ${RESELL_AI_MODEL_RESEARCH_ABACUS:-}
+      AI_MODEL_VALUATION_ABACUS: ${RESELL_AI_MODEL_VALUATION_ABACUS:-}
+      AI_MODEL_WRITER_ABACUS:    ${RESELL_AI_MODEL_WRITER_ABACUS:-}
+
+      AI_API_BASE_URL_OPENROUTER:    ${RESELL_AI_API_BASE_URL_OPENROUTER:-}
+      AI_API_KEY_OPENROUTER:         ${RESELL_AI_API_KEY_OPENROUTER:-}
+      AI_MODEL_VISION_OPENROUTER:    ${RESELL_AI_MODEL_VISION_OPENROUTER:-}
+      AI_MODEL_RESEARCH_OPENROUTER:  ${RESELL_AI_MODEL_RESEARCH_OPENROUTER:-}
+      AI_MODEL_VALUATION_OPENROUTER: ${RESELL_AI_MODEL_VALUATION_OPENROUTER:-}
+      AI_MODEL_WRITER_OPENROUTER:    ${RESELL_AI_MODEL_WRITER_OPENROUTER:-}
+
+      AI_API_BASE_URL_GOOGLE:    ${RESELL_AI_API_BASE_URL_GOOGLE:-}
+      AI_API_KEY_GOOGLE:         ${RESELL_AI_API_KEY_GOOGLE:-}
+      AI_MODEL_VISION_GOOGLE:    ${RESELL_AI_MODEL_VISION_GOOGLE:-}
+      AI_MODEL_RESEARCH_GOOGLE:  ${RESELL_AI_MODEL_RESEARCH_GOOGLE:-}
+      AI_MODEL_VALUATION_GOOGLE: ${RESELL_AI_MODEL_VALUATION_GOOGLE:-}
+      AI_MODEL_WRITER_GOOGLE:    ${RESELL_AI_MODEL_WRITER_GOOGLE:-}
+      # Brave Search
+      BRAVE_API_KEY:        ${RESELL_BRAVE_API_KEY:-}
+      # eBay Developer API (optional — workflow soft-fails without it)
+      EBAY_CLIENT_ID:       ${RESELL_EBAY_CLIENT_ID:-}
+      EBAY_CLIENT_SECRET:   ${RESELL_EBAY_CLIENT_SECRET:-}
+      # eBay Marketplace Account Deletion notification endpoint (separate small workflow)
+      EBAY_VERIFICATION_TOKEN:   ${RESELL_EBAY_VERIFICATION_TOKEN:-}
+      EBAY_NOTIFICATION_ENDPOINT: ${RESELL_EBAY_NOTIFICATION_ENDPOINT:-}
+      # Supabase (the resale-ledger project's DB — service role key, not anon)
+      SUPABASE_URL:         ${RESELL_SUPABASE_URL:-}
+      SUPABASE_SERVICE_KEY: ${RESELL_SUPABASE_SERVICE_KEY:-}
+      # Error notifications (optional — configure at least one)
+      ERROR_NOTIFY_WEBHOOK: ${RESELL_ERROR_NOTIFY_WEBHOOK:-}
+      ERROR_NOTIFY_EMAIL:   ${RESELL_ERROR_NOTIFY_EMAIL:-}
+      # Shared secret the resale-ledger app sends as x-webhook-secret
+      WEBHOOK_SECRET:       ${RESELL_WEBHOOK_SECRET:?RESELL_WEBHOOK_SECRET is required}
+
     volumes:
       # Persists the SQLite fallback DB, encryption key, instance
       # logs, and source-control assets across restarts.
@@ -93,6 +143,25 @@ services:
     depends_on:
       n8n-postgres:
         condition: service_healthy
+    networks:
+      - n8n-internal
+
+  # ----------------------------------------------------------
+  #  Cloudflare Tunnel — exposes n8n publicly at a stable hostname
+  #  (currently: ebay-notify.michaelfoss.dev, for eBay's Marketplace
+  #  Account Deletion notification endpoint). Reaches n8n over the
+  #  internal Docker network — port 5678 is never exposed to the internet.
+  # ----------------------------------------------------------
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: n8n-cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      - /Users/mfoss/.cloudflared/0ca7a51b-c4df-4b2a-8181-c82e6a4853d9.json:/etc/cloudflared/creds.json:ro
+    depends_on:
+      - n8n
     networks:
       - n8n-internal
 

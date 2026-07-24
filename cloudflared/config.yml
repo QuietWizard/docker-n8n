@@ -1,0 +1,9 @@
+tunnel: 0ca7a51b-c4df-4b2a-8181-c82e6a4853d9
+credentials-file: /etc/cloudflared/creds.json
+
+ingress:
+  # eBay Marketplace Account Deletion notifications (n8n workflows:
+  # ebay-deletion-challenge-workflow.json / ebay-deletion-notification-workflow.json)
+  - hostname: ebay-notify.michaelfoss.dev
+    service: http://n8n:5678
+  - service: http_status:404
